@@ -1,0 +1,109 @@
+Select *
+From PortfolioProject..Health_Covid19
+where total_deaths is not null
+order by 3,4
+
+Select *
+From PortfolioProject..Demographics_Covid19
+where human_development_index is not null
+order by 1,2
+
+--comparing human development index between Germany and Nigeria
+
+Select continent, location, population, median_age, human_development_index
+From PortfolioProject..Demographics_Covid19
+where location like '%Germany%' and human_development_index is not null
+order by 1,2
+
+Select continent, location, population, median_age, human_development_index
+From PortfolioProject..Demographics_Covid19
+where location like '%Nigeria%' and human_development_index is not null
+order by 1,2
+
+--comparing hospital pressure between Germany and United Kingdom
+
+Select continent, location, date, total_cases, hospital_beds_per_thousand, total_deaths, (total_deaths/total_cases)*100 as Death_per_hundred_cases
+From PortfolioProject..Health_Covid19
+where location like '%Germany%' and total_deaths is not null
+order by 3,4
+
+Select continent, location, date, total_cases, hospital_beds_per_thousand, total_deaths, (total_deaths/total_cases)*100 as Death_per_hundred_cases
+From PortfolioProject..Health_Covid19
+where location like '%United Kingdom%' and total_deaths is not null
+order by 3,4
+
+--Percentage of covid patients in the hospital
+
+Select continent, location, date, total_cases, hosp_patients, (hosp_patients/total_cases)*100 as percentage_in_hosptal
+From PortfolioProject..Health_Covid19
+where location like '%United kingdom%' and total_cases is not null
+order by 3,4
+
+
+--Showing continents with highest death count
+
+Select continent, MAX(cast(total_deaths as int)) as total_death_count
+From PortfolioProject..Health_Covid19
+Where continent is not null
+Group by continent
+order by total_death_count desc
+
+--Summing up according to total cases, total deaths and global death rate in percentage 
+
+Select SUM(new_cases) as total_cases, SUM(cast(new_deaths as int)) as total_deaths, SUM(cast
+	(new_deaths as int))/SUM(New_Cases)*100 as death_rate_per_hundred
+From PortfolioProject..Health_Covid19
+order by 1,2
+
+
+With PopvsVac (Continent, Location, Date, Population, New_vacccinations, RollingPeopleVaccinated) 
+as
+(
+Select Health_Covid19.continent, Health_Covid19.location, Health_Covid19.date, Health_Covid19.new_vaccinations
+, SUM(CONVERT(int,Health_Covid19.new_vaccinations)) OVER (Partition by Health_Covid19.location Order by Health_Covid19.location, Health_Covid19.Date ) 
+as RollingPeopleVaccinated
+From PortfolioProject..Health_Covid19
+Join PortfolioProject..Demographics_Covid19
+	On Health_Covid19.location = Demographics_Covid19.location
+	and Health_Covid19.date = Demographics_Covid19.date
+where Health_Covid19.continent is not null 
+order by 2,3
+)
+
+DROP Table if exists #percentPopulationVacinated
+Create Table #PercentPopulationVaccinated
+(
+Continent nvarchar(255),
+Location nvarchar(255),
+Date datetime,
+Population numeric,
+New_Vaccinations numeric,
+RollingPeopleVaccinated numeric
+)
+Insert into #PercentPopulationVaccinated
+Create View PercentPopulationVaccinated as
+Select Health_Covid19.continent, Health_Covid19.location, Health_Covid19.date, Health_Covid19.new_vaccinations
+, SUM(CONVERT(int,Health_Covid19.new_vaccinations)) OVER (Partition by Health_Covid19.location Order by Health_Covid19.location, Health_Covid19.Date ) 
+as RollingPeopleVaccinated
+From PortfolioProject..Health_Covid19
+Join PortfolioProject..Demographics_Covid19
+	On Health_Covid19.location = Demographics_Covid19.location
+	and Health_Covid19.date = Demographics_Covid19.date
+where Health_Covid19.continent is not null 
+order by 2,3
+
+select *, (RollingPeopleVaccinated/Population) *100
+From #PercentPopulationVaccinated
+
+--Creating view to store data for later visualizations
+
+Create View PercentPopulationVaccinated as
+Select Health_Covid19.continent, Health_Covid19.location, Health_Covid19.date, Health_Covid19.new_vaccinations
+, SUM(CONVERT(int,Health_Covid19.new_vaccinations)) OVER (Partition by Health_Covid19.location Order by Health_Covid19.location, Health_Covid19.Date ) 
+as RollingPeopleVaccinated
+From PortfolioProject..Health_Covid19
+Join PortfolioProject..Demographics_Covid19
+	On Health_Covid19.location = Demographics_Covid19.location
+	and Health_Covid19.date = Demographics_Covid19.date
+where Health_Covid19.continent is not null 
+order by 2,3
